@@ -1,6 +1,6 @@
 // const User = require("../models/userModel");
-const Queue = require("../models/serverQueue");
-const Server = require("../models/servers");
+// const Queue = require("../models/serverQueue");
+// const Server = require("../models/servers");
 const dbc = require("./catodb");
 const catodb = require('catodb')
 const { pteroKey, jwtToken } = require('../config.json');
@@ -25,9 +25,11 @@ module.exports.createServer = async (req, res, next) => {
     if(software == ""){
       return res.json({added: false, msg: "Please select a server software."});
     }
-    const getNodeStats = await Node.findOne({ pteroId: location }).select([
-      "nodeSlots"
-    ]);
+    // const getNodeStats = await Node.findOne({ pteroId: location }).select([
+    //   "nodeSlots"
+    // ]);
+    var getNodeStats = await dbc.fetch({table:"nodes",filters:{column:"pteroId",value:location}});
+    getNodeStats = JSON.parse(getNodeStats.data[0]);
     if(getNodeStats.nodeSlots <= 0){
       return res.json({ added: false, msg: "This node currently does not have any slots available."});
     }else{
@@ -36,7 +38,9 @@ module.exports.createServer = async (req, res, next) => {
         const newTotalCPU = user.availCPU - cpu;
         const newTotalSlots = user.availSlots - 1;
 
-        const servers = await Server.find({ serverOwner: jwtVerify._id }).count();
+        // const servers = await Server.find({ serverOwner: jwtVerify._id }).count();
+        var servers = await dbc.fetch({table:"servers",filters:{column:"serverOwner",value:jwtVerify._id}});
+        servers = servers.data.length;
         if(servers >= 5){
           return res.json({added:false,msg:"You can only have 5 servers to an account."});
         }
@@ -137,19 +141,23 @@ module.exports.createServer = async (req, res, next) => {
       await db.update({table:"users",row:user.row,data:{'availDisk': newTotalDisk},mode:"adjust"})
       await db.update({table:"users",row:user.row,data:{'availCPU': newTotalCPU},mode:"adjust"})
       await db.update({table:"users",row:user.row,data:{'availSlots': newTotalSlots},mode:"adjust"})
-      const server = await Server.create({
-        serverName: name,
-        serverId: pteroData.attributes.id,
-        serverNode: location,
-        serverMemory: memory,
-        serverCPU: cpu,
-        serverDisk: disk,
-        serverSuspended: false,
-        serverOwner: userUid
-      });
+      // const server = await Server.create({
+      //   serverName: name,
+      //   serverId: pteroData.attributes.id,
+      //   serverNode: location,
+      //   serverMemory: memory,
+      //   serverCPU: cpu,
+      //   serverDisk: disk,
+      //   serverSuspended: false,
+      //   serverOwner: userUid
+      // });
+      await db.insert({table:"servers",data:{serverName: name,serverId: pteroData.attributes.id,serverNode: location,serverMemory: memory,serverCPU: cpu,serverDisk: disk,serverSuspended: false,serverOwner: userUid}})
+      const server = await dbc.fetch({table:"servers",filters:{column:"serverId",value:pteroData.attributes.id}})
       delete user.password
       const updatedSlots = getNodeStats.nodeSlots -1;
-      await Node.findOneAndUpdate({'pteroId':location},{'nodeSlots': updatedSlots});
+      // await Node.findOneAndUpdate({'pteroId':location},{'nodeSlots': updatedSlots});
+      let node = await dbc.fetch({table:"nodes",filters:{pteroId:location}})
+      db.update({table:"nodes",row:node.row,data:{nodeSlots:updatedSlots},mode:"adjust"})
       createdServer(user.username, name, memory, cpu, disk, location, pteroData.attributes.id)
       return res.json({ status: 200, added: true, server})
     }else{
@@ -167,7 +175,8 @@ module.exports.createServer = async (req, res, next) => {
 module.exports.addToQueue = async (req, res, next) => {
     try {
         const { userUid, name, location, software, memory, disk, cpu } = req.body;
-        const user = await User.findOne({ userUid });
+        const usere = await dbc.fetch({table:"users",filters:{column:"_id",value:userUid}});
+        const user = usere.data;
         const newTotalMem = user.availMem - memory;
         const newTotalDisk = user.availDisk - disk;
         const newTotalCPU = user.availCPU - cpu;
@@ -181,16 +190,23 @@ module.exports.addToQueue = async (req, res, next) => {
         }else if(newTotalSlots < 0){
           return res.json({ added: false, msg: "You can't use more slots than your account has."})
         }else{
-        await User.findByIdAndUpdate(user._id, {'availMem': newTotalMem, 'availDisk': newTotalDisk, 'availCPU': newTotalCPU, 'availSlots': newTotalSlots});
-        const server = await Queue.create({
-            serverName: name,
-            serverSoftware: software,
-            serverNode: location,
-            serverMemory: memory,
-            serverCPU: cpu,
-            serverDisk: disk,
-            serverOwner: userUid
-          });
+        // await User.findByIdAndUpdate(user._id, {'availMem': newTotalMem, 'availDisk': newTotalDisk, 'availCPU': newTotalCPU, 'availSlots': newTotalSlots});
+        await db.update({table:"users",row:user.row,data:{'availMem': newTotalMem},mode:"adjust"})
+        await db.update({table:"users",row:user.row,data:{'availDisk': newTotalDisk},mode:"adjust"})
+        await db.update({table:"users",row:user.row,data:{'availCPU': newTotalCPU},mode:"adjust"})
+        await db.update({table:"users",row:user.row,data:{'availSlots': newTotalSlots},mode:"adjust"})
+
+        // const server = await Queue.create({
+        //     serverName: name,
+        //     serverSoftware: software,
+        //     serverNode: location,
+        //     serverMemory: memory,
+        //     serverCPU: cpu,
+        //     serverDisk: disk,
+        //     serverOwner: userUid
+        //   });
+        await db.insert({table:"queue",data:{serverName: name,serverSoftware: software,serverNode: location,serverMemory: memory,serverCPU: cpu,serverDisk: disk,serverOwner: userUid}})
+        const server = await dbc.fetch({table:"queue",filters:{column:"serverName",value:name}})
           delete user.password
           addedToQueue(user.username, name, memory, cpu, disk)
         return res.json({ added: true, server });
@@ -204,7 +220,8 @@ module.exports.addToQueue = async (req, res, next) => {
     try {
         const bearerHeader = req.headers['authorization'];
         const jwtVerify = jwt.verify(bearerHeader,jwtToken)
-        const servers = await Server.find({ serverOwner: jwtVerify._id })
+        // const servers = await Server.find({ serverOwner: jwtVerify._id })
+        const servers = await db.fetch({table:"servers",filters:{column:"serverOwner",value:jwtVerify._id}})
         return res.json({ servers });
       } catch (ex) {
         next(ex);
@@ -217,7 +234,8 @@ module.exports.addToQueue = async (req, res, next) => {
       const jwtVerify = jwt.verify(bearerHeader,jwtToken)
       const userId = jwtVerify._id;
       const {server} = req.body;
-      const serverData = await Server.findById(server);
+      // const serverData = await Server.findById(server);
+      const serverData = await dbc.fetch({table:"servers",filters:{column:"_id",value:server}})
       if(serverData.serverOwner === userId){
         await fetch('https://control.forcehost.net/api/application/servers/'+serverData.serverId, {
       method: 'DELETE',
@@ -228,20 +246,28 @@ module.exports.addToQueue = async (req, res, next) => {
       },
     })
 
-        const userData = await User.findById(userId).select([
-          "availMem",
-          "availDisk",
-          "availCPU",
-          "availSlots",
-          "username"
-        ])
+        // const userData = await User.findById(userId).select([
+        //   "availMem",
+        //   "availDisk",
+        //   "availCPU",
+        //   "availSlots",
+        //   "username"
+        // ])
+        const userData = await dbc.fetch({table:"users",filters:{column:"_id",value:userId}})
         const newTotalMem = userData.availMem + serverData.serverMemory;
         const newTotalDisk = userData.availDisk + serverData.serverDisk;
         const newTotalCPU = userData.availCPU + serverData.serverCPU;
         const newTotalSlots = userData.availSlots + 1;
         deletedServer(userData.username, serverData.serverMemory, serverData.serverCPU, serverData.serverDisk, serverData.serverNode)
-        await Server.deleteOne({ _id: server});
-        await User.findByIdAndUpdate(userId, {'availMem': newTotalMem, 'availDisk': newTotalDisk, 'availCPU': newTotalCPU, 'availSlots': newTotalSlots});
+        // await Server.deleteOne({ _id: server});
+        let temp = await dbc.fetch({table:"servers",filters:{column:"_id",value:server}})
+        await db.delete({table:"servers",row:temp.row})
+        // await User.findByIdAndUpdate(userId, {'availMem': newTotalMem, 'availDisk': newTotalDisk, 'availCPU': newTotalCPU, 'availSlots': newTotalSlots});
+        await db.update({table:"users",row:userData.row,data:{'availMem': newTotalMem},mode:"adjust"})
+        await db.update({table:"users",row:userData.row,data:{'availDisk': newTotalDisk},mode:"adjust"})
+        await db.update({table:"users",row:userData.row,data:{'availCPU': newTotalCPU},mode:"adjust"})
+        await db.update({table:"users",row:userData.row,data:{'availSlots': newTotalSlots},mode:"adjust"})
+        
         return res.json({status: 200})
       }else{
         return res.json({status: 401, msg: 'You do not have the permission to delete this server.'})
