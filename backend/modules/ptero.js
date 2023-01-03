@@ -9,7 +9,49 @@ exports.getall = async function(){
   var nds = await ptero.listNodes()
   console.log(nds)
 }
-
+exports.makeserver = async function(id,name,nest,egg,mem,cpu,disk,db,back,loc){
+  let egginfo = await pterofetch.getEgg(nest,egg);
+  console.log(egginfo.attributes.relationships.variables.data)
+  let str1 = "{"
+  let count = 0;
+  egginfo.attributes.relationships.variables.data.forEach(element => {
+    if (count > 0) {
+      str1 = str1.concat(',','"'+element.attributes.env_variable+'": "'+element.attributes.default_value+'"'); 
+    }else{
+      str1 = str1.concat('"'+element.attributes.env_variable+'": "'+element.attributes.default_value+'"');
+    }
+  count++;
+  });
+  str1 = str1.concat('}')
+  // egginfo.attributes.relationships.variables.data.reduce((env, obj) => ({ ...obj, [env.key]: env.default_value }), {});
+  let eggvars = JSON.parse(str1)
+  console.log(eggvars)
+  console.log(await pterofetch.createServer(
+    {
+      "name": name,
+      "user": id,
+      "egg": egg,
+      "docker_image": egginfo.attributes.docker_image,
+      "startup": egginfo.attributes.startup,
+      "environment": eggvars,
+      "limits": {
+        "memory": mem,
+        "swap": 0,
+        "disk": disk,
+        "io": 500,
+        "cpu": cpu
+      },
+      "feature_limits": {
+        "databases": db,
+        "backups": back
+      },
+      "deploy":{
+        "locations": [loc],
+        "dedicated_ip": false,
+        "port_range": []
+      }
+  }))
+}
 exports.meowsusers = async function(){
   var urs = await ptero.listUsers()
   console.log(urs)

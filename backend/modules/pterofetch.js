@@ -210,3 +210,41 @@ exports.getEgg = async function(nest,egg){
 })
  .then(response => response.json().then())
 }
+exports.createUser = async function(data){
+  var settings = await getSettings();
+  return fetch("https://"+settings.ptero.url+"/api/application/users", {
+  "method": "POST",
+  "headers": {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "Authorization": "Bearer "+settings.ptero.token
+  },
+    body:{
+      "email": data.email,
+      "username": data.username,
+      "first_name": data.username,
+      "last_name": data.UID,
+    }
+})
+  .then(response => response.json().then())
+}
+exports.updateUser = async function(num,data){
+  var settings = await getSettings();
+  return fetch("https://"+settings.ptero.url+"/api/application/users/"+num, {
+  "method": "PATCH",
+  "headers": {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "Authorization": "Bearer "+settings.ptero.token
+  },
+    body:{
+      "email": data.email,
+      "username": data.username,
+      "first_name": data.username,
+      "last_name": data.UID,
+      "language": "en",
+    "password": data.password,
+    }
+})
+  .then(response => response.json().then())
+}
