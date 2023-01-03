@@ -1,0 +1,16 @@
+<head>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <script src="index.js"></script>
+    <title>dash</title>
+</head>
+<body>
+<h1>CatoDB Dashboard</h1>
+<h3>Status</h3>
+<p id="status">Connecting . . .</p>
+<h3>Run Fetch</h3>
+<form name="fetch" onsubmit="event.preventDefault(); que()" method="post">
+    Query: <input type="text" name="quey"> 
+    <input type="submit" name="run" value="RUN">
+    </form>
+    <p id="data">No table here</p>
+</body>
