@@ -1,9 +1,7 @@
-const catodb = require('catodb')
 const tools = require('./tools.js')
 const pterofetch = require('./pterofetch.js')
-const db = new catodb('ws://localhost:4020','CatoDB')
 
-exports.login = async function(user,pass){
+exports.login = async function(user,pass,db){
     var info = {user: user,pass: pass}
     return new Promise(async function(resolve, reject){
     try{
@@ -22,7 +20,7 @@ exports.login = async function(user,pass){
     }
 });
 }
-exports.register = async function(user){
+exports.register = async function(user,db){
     var info = user
     return new Promise(async function(resolve, reject){
     let data = ""
@@ -49,7 +47,7 @@ exports.register = async function(user){
                 data = await db.fetch({table: "auth",filters: {column: "UID", value: "*"}})
                 console.log(data)
                 let tkn = tools.genid(1000)
-                await db.insert({table: "auth",data:{user: info.user,pass: info.pass,status: "user",UID: data.length+1,PetroID: "none",token: tkn,email: info.email}})
+                await db.insert({table: "auth",data:{user: info.user,email: info.email,pass: info.pass,type:"user",UID: data.length+1,PetroID: "none",token: tkn}})
                 await pterofetch.createUser({username:info.user,UID:info.UID,email:info.email})
                 await pterofetch.updateUser({username:info.user,UID:info.UID,email:info.email,password:info.pass})
         resolve({status: 200})

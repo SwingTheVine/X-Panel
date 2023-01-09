@@ -7,7 +7,7 @@ var os = require('os');
 
 var eventEmitter = new events.EventEmitter();
 // declare consts
-const port = 4040;
+const port = 80;
 const home = "index";
 const infoprefix = "{INFO}";
 const reqprefix = "{REQUEST}";
