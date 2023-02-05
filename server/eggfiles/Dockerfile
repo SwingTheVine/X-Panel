@@ -7,7 +7,7 @@ RUN         npm install npm@latest -g
 USER        container
 ENV         USER=container HOME=/home/container
 WORKDIR     /home/container
-COPY ["package.json", "package-lock.json*", "npm-shrinkwrap.json*", "./"]
+COPY ["../package.json", "../package-lock.json*", "../npm-shrinkwrap.json*", "../"]
 RUN npm install --production --silent && mv node_modules ../
 COPY . .
 EXPOSE 25566
