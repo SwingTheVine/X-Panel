@@ -5,9 +5,9 @@ on:
     - cron: "0 0 * * 1"
   push:
     branches:
-      - patch-1
+      - main
     paths:
-      - server/eggfiles
+      - server/eggfiles/**
 jobs:
   push:
     name: "yolks:${{ matrix.tag }}"
@@ -31,7 +31,7 @@ jobs:
       - uses: docker/build-push-action@v3
         with:
           context: ./server/eggstuff/
-          file: ./Dockerfile
+          file: ./server/eggstuff/Dockerfile
           platforms: linux/arm64
           push: true
           tags: |
