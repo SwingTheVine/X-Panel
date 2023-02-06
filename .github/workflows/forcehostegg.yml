@@ -30,7 +30,7 @@ jobs:
           password: ${{ secrets.REGISTRY_TOKEN }}
       - uses: docker/build-push-action@v3
         with:
-          context: ./server/eggfiles/
+          context: ./server/
           file: ./server/eggfiles/Dockerfile
           platforms: linux/arm64
           push: true
